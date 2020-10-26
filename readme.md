@@ -1,7 +1,6 @@
 ис29
 
 ```console
-$ moulsay 'Hello World!'
       ++
       ++++
        ++++
