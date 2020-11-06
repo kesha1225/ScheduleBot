@@ -1,20 +1,18 @@
 import asyncio
-import traceback
-
 import datetime
-import logging
 import json
+import logging
+import traceback
 from typing import Tuple
 
 from pytz import timezone
-
 from vkwave.bots import SimpleLongPollBot, Keyboard, ButtonColor, TTLStorage
 from vkwave.bots.storage.types import Key
 
+from ._types import SCHEDULE, DAYS
 from .keyboards import get_default_kb
 from .schedule_parser import get_week_schedule
 from .utils import create_text_schedule, create_percent
-from ._types import SCHEDULE, DAYS
 
 logging.basicConfig(filename="schedule_parser.log", level=logging.ERROR)
 
@@ -58,16 +56,37 @@ async def send_schedule(event: bot.SimpleBotEvent):
     schedule, days = await get_schedule_and_days()
     now = get_now()
     current_schedule = None
+
     for day in days:
-        if day.startswith(str(now.day)):
+        check_day = int(day.split(".")[0])
+        if check_day == now.day:
             current_schedule = schedule[days.index(day)]
     if current_schedule is None:
         return "Какие пары иди спи"
     for lesson in current_schedule:
-        print(now.strftime("%H:%M"), lesson["time"])
-        if now.strftime("%H:%M") in lesson["time"]:
-            print(lesson)
-    return "Пока не готово"
+        start_time, end_time = lesson["time"].split("–")
+
+        current_hour, current_minute = now.strftime("%H:%M").split(":")
+        current_timedelta = datetime.timedelta(
+            hours=int(current_hour), minutes=int(current_minute)
+        )
+
+        start_hour, start_minute = start_time.split(":")
+        start_timedelta = datetime.timedelta(
+            hours=int(start_hour), minutes=int(start_minute)
+        )
+
+        end_hour, end_minute = end_time.split(":")
+        end_timedelta = datetime.timedelta(hours=int(end_hour), minutes=int(end_minute))
+
+        if start_timedelta <= current_timedelta <= end_timedelta:
+            return await event.answer(
+                message=create_text_schedule([lesson])
+                .replace("Пара №1:\n", "")
+                .replace("--------------------", ""),
+                dont_parse_links=True,
+            )
+    return "Сейчас пары нет"
 
 
 @bot.message_handler(
