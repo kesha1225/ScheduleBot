@@ -2,24 +2,28 @@ import asyncio
 import datetime
 import json
 import logging
+import os
 import traceback
 from typing import Tuple
 
 from pytz import timezone
 from vkwave.bots import SimpleLongPollBot, Keyboard, ButtonColor, TTLStorage
 from vkwave.bots.storage.types import Key
+from dotenv import load_dotenv
 
 from ._types import SCHEDULE, DAYS
 from .keyboards import get_default_kb
 from .schedule_parser import get_week_schedule
 from .utils import create_text_schedule, create_percent
 
+load_dotenv()
+
 logging.basicConfig(filename="schedule_parser.log", level=logging.ERROR)
 
 storage = TTLStorage(default_ttl=600)
 
 bot = SimpleLongPollBot(
-    "7bee13626c43db9ebba1ba78d6646c1e614b92494e4b870706a2f2ed006b843a3b84f59e33d72447a3a54",
+    os.getenv("TOKEN"),
     group_id=198546018,
 )
 
