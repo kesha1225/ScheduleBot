@@ -111,7 +111,7 @@ async def day_schedule(event: bot.SimpleBotEvent):
 @bot.message_handler(bot.payload_filter({"command": "go"}))
 async def send_go(event: bot.SimpleBotEvent):
     now = get_now()
-    if now.isoweekday() in (3, 6, 7):
+    if now.isoweekday() in (6, 7):
         return "В выходные поучиться захотелось?"
 
     percent = create_percent(user_id=event.object.object.message.from_id, now=now)
