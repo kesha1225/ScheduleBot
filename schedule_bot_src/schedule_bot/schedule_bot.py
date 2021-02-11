@@ -85,6 +85,15 @@ async def get_current_schedule_for_which_and_next() -> Optional[DAY_SCHEDULE]:
             current_schedule = correct_schedule(
                 days=days, schedule=schedule, today=now.day + 1
             )
+
+    # вдруг там нет пар или еще что, короче на всякий
+    i = 1
+    while current_schedule is None:
+        current_schedule = correct_schedule(
+            days=days, schedule=schedule, today=now.day + i
+        )
+        i += 1
+
     return current_schedule
 
 
@@ -188,6 +197,16 @@ async def next_lesson(event: bot.SimpleBotEvent):
     schedule, days = await get_schedule_and_days()
     now = get_now()
     current_schedule = correct_schedule(days=days, schedule=schedule, today=now.day + 1)
+
+
+    # TODO: Тут тоже повтор, вынести куда то, а то спать хочу в падлу
+    i = 1
+    while current_schedule is None:
+        current_schedule = correct_schedule(
+            days=days, schedule=schedule, today=now.day + i
+        )
+        i += 1
+
     message = create_next_lesson_message(
         current_schedule=current_schedule,
         current_timedelta=current_timedelta,
@@ -241,8 +260,6 @@ async def tomorrow(event: bot.SimpleBotEvent):
             response = f"Завтра - {tomorrow_date.strftime('%d.%m.%Y')}\n{create_text_schedule(current_schedule)}"
 
             await event.answer(response, dont_parse_links=True)
-
-
 
 
 @bot.message_handler()
