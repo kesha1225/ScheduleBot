@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import json
 import logging
 import os
@@ -84,7 +85,6 @@ async def get_current_schedule_for_which_and_next() -> Optional[DAY_SCHEDULE]:
             current_schedule = correct_schedule(
                 days=days, schedule=schedule, today=now.day + 1
             )
-
     return current_schedule
 
 
@@ -120,18 +120,15 @@ async def send_schedule(event: bot.SimpleBotEvent):
     return "Сейчас пары нет"
 
 
-@bot.message_handler(bot.payload_filter({"command": "next"}))
-async def next_lesson(event: bot.SimpleBotEvent):
-    current_schedule = await get_current_schedule_for_which_and_next()
-
-    if current_schedule is None:
-        return "некст пара не обнаружена))"
-    current_timedelta = get_current_timedelta()
-
-    current_lesson = get_current_lesson(current_schedule)
-
+def create_next_lesson_message(
+    current_schedule: DAY_SCHEDULE,
+    current_timedelta: datetime.timedelta,
+    current_lesson: Optional[LESSON],
+):
     for lesson in current_schedule:
-        if lesson == current_lesson:
+        if current_lesson is not None and current_schedule.index(
+            lesson
+        ) <= current_schedule.index(current_lesson):
             continue
         start_timedelta, _ = get_start_end_timedelta(lesson)
 
@@ -163,10 +160,43 @@ async def next_lesson(event: bot.SimpleBotEvent):
             )
         else:
             message = f"Следующая пара через {next_lesson_time_list[1]} {minute_word}:\n\n{next_lesson_text}"
+        return message
+    return None
+
+
+@bot.message_handler(bot.payload_filter({"command": "next"}))
+async def next_lesson(event: bot.SimpleBotEvent):
+    current_schedule = await get_current_schedule_for_which_and_next()
+
+    if current_schedule is None:
+        return "некст пара не обнаружена))"
+    current_timedelta = get_current_timedelta()
+    current_lesson = get_current_lesson(current_schedule)
+
+    message = create_next_lesson_message(
+        current_schedule=current_schedule,
+        current_timedelta=current_timedelta,
+        current_lesson=current_lesson,
+    )
+    if message is not None:
         return await event.answer(
             message=message,
             dont_parse_links=True,
         )
+
+    # сейчас последняя пара, делаем на день вперед
+    schedule, days = await get_schedule_and_days()
+    now = get_now()
+    current_schedule = correct_schedule(days=days, schedule=schedule, today=now.day + 1)
+    message = create_next_lesson_message(
+        current_schedule=current_schedule,
+        current_timedelta=current_timedelta,
+        current_lesson=current_lesson,
+    )
+    return await event.answer(
+        message=message,
+        dont_parse_links=True,
+    )
 
 
 @bot.message_handler(
