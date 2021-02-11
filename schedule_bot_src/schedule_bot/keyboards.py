@@ -9,19 +9,24 @@ def get_default_kb() -> Keyboard:
     default_kb.add_row()
     default_kb.add_text_button(
         text="Какая сейчас пара?",
-        color=ButtonColor.NEGATIVE,
+        color=ButtonColor.SECONDARY,
         payload={"command": "which"},
     )
-    default_kb.add_row()
     default_kb.add_text_button(
         text="Какая некст пара?",
-        color=ButtonColor.PRIMARY,
+        color=ButtonColor.SECONDARY,
         payload={"command": "next"},
     )
     default_kb.add_row()
     default_kb.add_text_button(
+        text="Какие пары завтра?",
+        color=ButtonColor.PRIMARY,
+        payload={"command": "tomorrow"},
+    )
+    default_kb.add_row()
+    default_kb.add_text_button(
         text="Идти ли сегодня на пары?",
-        color=ButtonColor.SECONDARY,
+        color=ButtonColor.NEGATIVE,
         payload={"command": "go"},
     )
     return default_kb
