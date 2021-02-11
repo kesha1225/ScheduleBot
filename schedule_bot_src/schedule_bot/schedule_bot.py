@@ -4,13 +4,13 @@ import logging
 import os
 import re
 import traceback
-from typing import Tuple, Optional, List, Dict
+from typing import Tuple, Optional, List
 
 from vkwave.bots import SimpleLongPollBot, Keyboard, ButtonColor, TTLStorage
 from vkwave.bots.storage.types import Key
 from dotenv import load_dotenv
 
-from ._types import SCHEDULE, DAYS
+from ._types import WEEK_SCHEDULE, DAYS, DAY_SCHEDULE, LESSON
 from .keyboards import get_default_kb
 from .schedule_parser import get_week_schedule
 from .utils import (
@@ -21,7 +21,8 @@ from .utils import (
     create_text_schedule_for_one_lesson,
     get_now,
     get_current_timedelta,
-    get_start_end_timedelta, create_word_for_day,
+    get_start_end_timedelta,
+    create_word_for_day,
 )
 
 load_dotenv()
@@ -36,7 +37,7 @@ bot = SimpleLongPollBot(
 )
 
 
-async def get_schedule() -> SCHEDULE:
+async def get_schedule() -> WEEK_SCHEDULE:
     schedule = await storage.get(Key("current_schedule"))
     return schedule
 
@@ -46,20 +47,43 @@ async def get_days() -> DAYS:
     return days
 
 
-async def get_schedule_and_days() -> Tuple[SCHEDULE, DAYS]:
+async def get_schedule_and_days() -> Tuple[WEEK_SCHEDULE, DAYS]:
     schedule, days = await asyncio.gather(get_schedule(), get_days())
     return schedule, days
 
 
-async def get_current_schedule_for_which_and_next() -> Optional[List[Dict[str, str]]]:
-    schedule, days = await get_schedule_and_days()
-    now = get_now()
+def correct_schedule(
+    days: List[str], schedule: WEEK_SCHEDULE, today: int
+) -> Optional[DAY_SCHEDULE]:
     current_schedule = None
-
     for day in days:
         check_day = int(day.split(".")[0])
-        if check_day == now.day:
+        if check_day == today:
             current_schedule = schedule[days.index(day)]
+    return current_schedule
+
+
+async def get_current_schedule_for_which_and_next() -> Optional[DAY_SCHEDULE]:
+    schedule, days = await get_schedule_and_days()
+    now = get_now()
+    current_schedule = correct_schedule(days=days, schedule=schedule, today=now.day)
+
+    # типа если сейчас уже все пары прошли то будет сегодняшние показывать без этого ужаса
+
+    if int(current_schedule[-1]["time"].split(":")[0]) < now.hour:
+        # мда
+        if now.isoweekday() + 1 == 6:
+            current_schedule = correct_schedule(
+                days=days, schedule=schedule, today=now.day + 3
+            )
+        elif now.isoweekday() + 1 == 7:
+            current_schedule = correct_schedule(
+                days=days, schedule=schedule, today=now.day + 2
+            )
+        else:
+            current_schedule = correct_schedule(
+                days=days, schedule=schedule, today=now.day + 1
+            )
 
     return current_schedule
 
@@ -70,21 +94,28 @@ async def send_schedule(event: bot.SimpleBotEvent):
     await event.answer(keyboard=kb.get_keyboard(), message="Выберите день")
 
 
+def get_current_lesson(current_schedule: DAY_SCHEDULE) -> Optional[LESSON]:
+    current_timedelta = get_current_timedelta()
+    for lesson in current_schedule:
+        start_timedelta, end_timedelta = get_start_end_timedelta(lesson)
+
+        if start_timedelta <= current_timedelta <= end_timedelta:
+            return lesson
+    return None
+
+
 @bot.message_handler(bot.payload_filter({"command": "which"}))
 async def send_schedule(event: bot.SimpleBotEvent):
     current_schedule = await get_current_schedule_for_which_and_next()
     if current_schedule is None:
         return "Какие пары иди спи"
-    current_timedelta = get_current_timedelta()
 
-    for lesson in current_schedule:
-        start_timedelta, end_timedelta = get_start_end_timedelta(lesson)
-
-        if start_timedelta <= current_timedelta <= end_timedelta:
-            return await event.answer(
-                message=create_text_schedule_for_one_lesson(lesson),
-                dont_parse_links=True,
-            )
+    current_lesson = get_current_lesson(current_schedule)
+    if current_lesson is not None:
+        return await event.answer(
+            message=create_text_schedule_for_one_lesson(current_lesson),
+            dont_parse_links=True,
+        )
 
     return "Сейчас пары нет"
 
@@ -94,10 +125,14 @@ async def next_lesson(event: bot.SimpleBotEvent):
     current_schedule = await get_current_schedule_for_which_and_next()
 
     if current_schedule is None:
-        return "123"
+        return "некст пара не обнаружена))"
     current_timedelta = get_current_timedelta()
 
+    current_lesson = get_current_lesson(current_schedule)
+
     for lesson in current_schedule:
+        if lesson == current_lesson:
+            continue
         start_timedelta, _ = get_start_end_timedelta(lesson)
 
         next_lesson_time = start_timedelta - current_timedelta  # -1 day, 15:53:00

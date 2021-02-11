@@ -2,10 +2,12 @@ import datetime
 import os
 import json
 import random
-from typing import List, Dict, Tuple
+from typing import Tuple
 
 from pytz import timezone
 import pymorphy2
+
+from ._types import DAY_SCHEDULE, LESSON
 
 morph = pymorphy2.MorphAnalyzer()
 
@@ -21,12 +23,10 @@ def create_word_for_minute(minute: int):
 
 
 def create_word_for_day(day: int):
-    return (
-        morph.parse("день")[0].make_agree_with_number(day).word
-    )
+    return morph.parse("день")[0].make_agree_with_number(day).word
 
 
-def create_text_schedule_for_one_lesson(lesson: Dict[str, str]) -> str:
+def create_text_schedule_for_one_lesson(lesson: LESSON) -> str:
     return (
         create_text_schedule([lesson])
         .replace("Пара №1:\n", "")
@@ -34,14 +34,19 @@ def create_text_schedule_for_one_lesson(lesson: Dict[str, str]) -> str:
     )
 
 
-def create_text_schedule(schedule: List[Dict[str, str]]) -> str:
+def create_text_schedule(schedule: DAY_SCHEDULE) -> str:
     response = ""
     old_times = []
     i = 1
     for subject in schedule:
         group_info = subject["group"] + "\n" if subject["group"] else ""
+
+        previous_group_info = None
+        if schedule.index(subject) != 0:
+            previous_group_info = schedule[schedule.index(subject) - 1]["group"]
         if (
             group_info == "ИС-29 б\n"
+            and previous_group_info == "ИС-29 а"
             and not subject["link"].strip()
             or subject["time"] in old_times
         ):
@@ -63,6 +68,10 @@ def create_text_schedule(schedule: List[Dict[str, str]]) -> str:
                 response += (
                     f"\nИС-29 а - {subject['classroom']}\nИС-29 б - {isb_classroom}"
                 )
+            elif group_info == "ИС-29 б\n" and previous_group_info != "ИС-29 а":
+                response += f"\nИС-29 б - {subject['classroom']}"
+            elif group_info == "ИС-29 а\n" and previous_group_info != "ИС-29 б":
+                response += f"\nИС-29 а - {subject['classroom']}"
             else:
                 response += f"\nИС-29 - {subject['classroom']}"
         if subject["link"].strip():
@@ -98,12 +107,12 @@ def get_now() -> datetime.datetime:
 def get_current_timedelta() -> datetime.timedelta:
     now = get_now()
     current_hour, current_minute = now.strftime("%H:%M").split(":")
-    return datetime.timedelta(
-        hours=int(current_hour), minutes=int(current_minute)
-    )
+    return datetime.timedelta(hours=int(current_hour), minutes=int(current_minute))
 
 
-def get_start_end_timedelta(lesson: Dict[str, str]) -> Tuple[datetime.timedelta, datetime.timedelta]:
+def get_start_end_timedelta(
+    lesson: LESSON,
+) -> Tuple[datetime.timedelta, datetime.timedelta]:
     start_time, end_time = lesson["time"].split("–")
     start_hour, start_minute = start_time.split(":")
     start_timedelta = datetime.timedelta(
@@ -114,4 +123,3 @@ def get_start_end_timedelta(lesson: Dict[str, str]) -> Tuple[datetime.timedelta,
     end_timedelta = datetime.timedelta(hours=int(end_hour), minutes=int(end_minute))
 
     return start_timedelta, end_timedelta
-

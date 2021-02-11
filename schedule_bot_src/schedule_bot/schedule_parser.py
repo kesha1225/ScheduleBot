@@ -6,7 +6,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 from pytz import timezone
 
-from ._types import SCHEDULE, DAYS
+from ._types import WEEK_SCHEDULE, DAYS
 
 SCHEDULE_URL = (
     "http://spravka.nngasu.ru/schedule/schedule/student?"
@@ -41,7 +41,7 @@ async def get_bitrix_code() -> List[str]:
         return re.findall(SCHEDULE_RE, text)
 
 
-def parse_schedule(schedule_html: str) -> Tuple[SCHEDULE, DAYS]:
+def parse_schedule(schedule_html: str) -> Tuple[WEEK_SCHEDULE, DAYS]:
     soup = BeautifulSoup(schedule_html, "html.parser")
     main_table = soup.find("table")
 
@@ -83,7 +83,7 @@ def parse_schedule(schedule_html: str) -> Tuple[SCHEDULE, DAYS]:
     return all_lessons, days
 
 
-async def get_week_schedule() -> Optional[Tuple[SCHEDULE, DAYS]]:
+async def get_week_schedule() -> Optional[Tuple[WEEK_SCHEDULE, DAYS]]:
     nino_time = timezone("Europe/Moscow")
     now = datetime.datetime.now(nino_time)
     future = now + datetime.timedelta(days=7)
