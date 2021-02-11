@@ -2,8 +2,9 @@ import datetime
 import os
 import json
 import random
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
+from pytz import timezone
 import pymorphy2
 
 morph = pymorphy2.MorphAnalyzer()
@@ -16,6 +17,12 @@ def create_word_for_hour(hour: int):
 def create_word_for_minute(minute: int):
     return (
         morph.parse("минута")[0].make_agree_with_number(minute).inflect({"gent"}).word
+    )
+
+
+def create_word_for_day(day: int):
+    return (
+        morph.parse("день")[0].make_agree_with_number(day).word
     )
 
 
@@ -81,3 +88,30 @@ def create_percent(user_id: int, now: datetime.datetime) -> int:
         with open(random_data_file, "w") as f:
             f.write(json.dumps(data))
     return percent
+
+
+def get_now() -> datetime.datetime:
+    nino_time = timezone("Europe/Moscow")
+    return datetime.datetime.now(nino_time)
+
+
+def get_current_timedelta() -> datetime.timedelta:
+    now = get_now()
+    current_hour, current_minute = now.strftime("%H:%M").split(":")
+    return datetime.timedelta(
+        hours=int(current_hour), minutes=int(current_minute)
+    )
+
+
+def get_start_end_timedelta(lesson: Dict[str, str]) -> Tuple[datetime.timedelta, datetime.timedelta]:
+    start_time, end_time = lesson["time"].split("–")
+    start_hour, start_minute = start_time.split(":")
+    start_timedelta = datetime.timedelta(
+        hours=int(start_hour), minutes=int(start_minute)
+    )
+
+    end_hour, end_minute = end_time.split(":")
+    end_timedelta = datetime.timedelta(hours=int(end_hour), minutes=int(end_minute))
+
+    return start_timedelta, end_timedelta
+

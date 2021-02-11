@@ -1,12 +1,11 @@
 import asyncio
-import datetime
 import json
 import logging
 import os
+import re
 import traceback
-from typing import Tuple
+from typing import Tuple, Optional, List, Dict
 
-from pytz import timezone
 from vkwave.bots import SimpleLongPollBot, Keyboard, ButtonColor, TTLStorage
 from vkwave.bots.storage.types import Key
 from dotenv import load_dotenv
@@ -20,6 +19,9 @@ from .utils import (
     create_word_for_hour,
     create_word_for_minute,
     create_text_schedule_for_one_lesson,
+    get_now,
+    get_current_timedelta,
+    get_start_end_timedelta, create_word_for_day,
 )
 
 load_dotenv()
@@ -49,9 +51,17 @@ async def get_schedule_and_days() -> Tuple[SCHEDULE, DAYS]:
     return schedule, days
 
 
-def get_now() -> datetime.datetime:
-    nino_time = timezone("Europe/Moscow")
-    return datetime.datetime.now(nino_time)
+async def get_current_schedule_for_which_and_next() -> Optional[List[Dict[str, str]]]:
+    schedule, days = await get_schedule_and_days()
+    now = get_now()
+    current_schedule = None
+
+    for day in days:
+        check_day = int(day.split(".")[0])
+        if check_day == now.day:
+            current_schedule = schedule[days.index(day)]
+
+    return current_schedule
 
 
 @bot.message_handler(bot.payload_filter({"command": "schedule"}))
@@ -62,33 +72,13 @@ async def send_schedule(event: bot.SimpleBotEvent):
 
 @bot.message_handler(bot.payload_filter({"command": "which"}))
 async def send_schedule(event: bot.SimpleBotEvent):
-    # TODO: доделать
-    schedule, days = await get_schedule_and_days()
-    now = get_now()
-    current_schedule = None
-
-    for day in days:
-        check_day = int(day.split(".")[0])
-        if check_day == now.day:
-            current_schedule = schedule[days.index(day)]
+    current_schedule = await get_current_schedule_for_which_and_next()
     if current_schedule is None:
         return "Какие пары иди спи"
-
-    current_hour, current_minute = now.strftime("%H:%M").split(":")
-    current_timedelta = datetime.timedelta(
-        hours=int(current_hour), minutes=int(current_minute)
-    )
+    current_timedelta = get_current_timedelta()
 
     for lesson in current_schedule:
-        start_time, end_time = lesson["time"].split("–")
-
-        start_hour, start_minute = start_time.split(":")
-        start_timedelta = datetime.timedelta(
-            hours=int(start_hour), minutes=int(start_minute)
-        )
-
-        end_hour, end_minute = end_time.split(":")
-        end_timedelta = datetime.timedelta(hours=int(end_hour), minutes=int(end_minute))
+        start_timedelta, end_timedelta = get_start_end_timedelta(lesson)
 
         if start_timedelta <= current_timedelta <= end_timedelta:
             return await event.answer(
@@ -96,27 +86,52 @@ async def send_schedule(event: bot.SimpleBotEvent):
                 dont_parse_links=True,
             )
 
+    return "Сейчас пары нет"
+
+
+@bot.message_handler(bot.payload_filter({"command": "next"}))
+async def next_lesson(event: bot.SimpleBotEvent):
+    current_schedule = await get_current_schedule_for_which_and_next()
+
+    if current_schedule is None:
+        return "123"
+    current_timedelta = get_current_timedelta()
+
+    for lesson in current_schedule:
+        start_timedelta, _ = get_start_end_timedelta(lesson)
+
         next_lesson_time = start_timedelta - current_timedelta  # -1 day, 15:53:00
 
-        if next_lesson_time.days == 0 and next_lesson_time.seconds <= 7300:
-            next_lesson_time_list = list(
-                map(int, str(next_lesson_time).split()[-1].split(":"))
+        days_left = re.findall(r"-(\d+) day,", str(next_lesson_time))
+
+        next_lesson_time_list = list(
+            map(int, str(next_lesson_time).split()[-1].split(":"))
+        )
+        hour_word = create_word_for_hour(next_lesson_time_list[0])
+        minute_word = create_word_for_minute(next_lesson_time_list[1])
+        next_lesson_text = create_text_schedule_for_one_lesson(lesson)
+
+        day = 0
+        if days_left:
+            day = int(days_left[0]) - 1
+
+        if day >= 1:
+            day_word = create_word_for_day(day)
+            message = (
+                f"Следующая пара через {day} {day_word} {next_lesson_time_list[0]}"
+                f" {hour_word} {next_lesson_time_list[1]} {minute_word}:\n\n{next_lesson_text}"
             )
-            hour_word = create_word_for_hour(next_lesson_time_list[0])
-            minute_word = create_word_for_minute(next_lesson_time_list[1])
-            next_lesson_text = create_text_schedule_for_one_lesson(lesson)
-            if next_lesson_time_list[0] > 0:
-                message = (
-                    f"Сейчас пары нет, но через {next_lesson_time_list[0]}"
-                    f" {hour_word} {next_lesson_time_list[1]} {minute_word} начнется:\n\n{next_lesson_text}"
-                )
-            else:
-                message = f"Сейчас пары нет, но через {next_lesson_time_list[1]} {minute_word} начнется:\n\n{next_lesson_text}"
-            return await event.answer(
-                message=message,
-                dont_parse_links=True,
+        elif next_lesson_time_list[0] > 0:
+            message = (
+                f"Следующая пара через {next_lesson_time_list[0]}"
+                f" {hour_word} {next_lesson_time_list[1]} {minute_word}:\n\n{next_lesson_text}"
             )
-    return "Сейчас пары нет"
+        else:
+            message = f"Следующая пара через {next_lesson_time_list[1]} {minute_word}:\n\n{next_lesson_text}"
+        return await event.answer(
+            message=message,
+            dont_parse_links=True,
+        )
 
 
 @bot.message_handler(
