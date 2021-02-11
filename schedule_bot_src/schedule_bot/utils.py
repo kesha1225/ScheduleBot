@@ -14,11 +14,17 @@ def create_word_for_hour(hour: int):
 
 
 def create_word_for_minute(minute: int):
-    return morph.parse("минута")[0].make_agree_with_number(minute).inflect({'gent'}).word
+    return (
+        morph.parse("минута")[0].make_agree_with_number(minute).inflect({"gent"}).word
+    )
 
 
 def create_text_schedule_for_one_lesson(lesson: Dict[str, str]) -> str:
-    return create_text_schedule([lesson]).replace("Пара №1:\n", "").replace("--------------------", "")
+    return (
+        create_text_schedule([lesson])
+        .replace("Пара №1:\n", "")
+        .replace("--------------------", "")
+    )
 
 
 def create_text_schedule(schedule: List[Dict[str, str]]) -> str:
@@ -27,7 +33,11 @@ def create_text_schedule(schedule: List[Dict[str, str]]) -> str:
     i = 1
     for subject in schedule:
         group_info = subject["group"] + "\n" if subject["group"] else ""
-        if group_info == "ИС-29 б\n" and not subject["link"].strip() or subject["time"] in old_times:
+        if (
+            group_info == "ИС-29 б\n"
+            and not subject["link"].strip()
+            or subject["time"] in old_times
+        ):
             continue
         response += (
             f"Пара №{i}:\n{subject['time']}\n{subject['title']}\n"
@@ -39,7 +49,9 @@ def create_text_schedule(schedule: List[Dict[str, str]]) -> str:
             if schedule.index(subject) + 1 < len(schedule):
                 next_subject_time = schedule[schedule.index(subject) + 1]["time"]
 
-            if (group_info == "ИС-29 а\n" or (next_subject_time in old_times)) and next_subject_time is not None:
+            if (
+                group_info == "ИС-29 а\n" or (next_subject_time in old_times)
+            ) and next_subject_time is not None:
                 isb_classroom = schedule[schedule.index(subject) + 1]["classroom"]
                 response += (
                     f"\nИС-29 а - {subject['classroom']}\nИС-29 б - {isb_classroom}"
