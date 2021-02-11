@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from ._types import SCHEDULE, DAYS
 from .keyboards import get_default_kb
 from .schedule_parser import get_week_schedule
-from .utils import create_text_schedule, create_percent
+from .utils import create_text_schedule, create_percent, create_word_for_hour, create_word_for_minute, create_text_schedule_for_one_lesson
 
 load_dotenv()
 
@@ -67,13 +67,14 @@ async def send_schedule(event: bot.SimpleBotEvent):
             current_schedule = schedule[days.index(day)]
     if current_schedule is None:
         return "Какие пары иди спи"
+
+    current_hour, current_minute = now.strftime("%H:%M").split(":")
+    current_timedelta = datetime.timedelta(
+        hours=int(current_hour), minutes=int(current_minute)
+    )
+
     for lesson in current_schedule:
         start_time, end_time = lesson["time"].split("–")
-
-        current_hour, current_minute = now.strftime("%H:%M").split(":")
-        current_timedelta = datetime.timedelta(
-            hours=int(current_hour), minutes=int(current_minute)
-        )
 
         start_hour, start_minute = start_time.split(":")
         start_timedelta = datetime.timedelta(
@@ -85,9 +86,24 @@ async def send_schedule(event: bot.SimpleBotEvent):
 
         if start_timedelta <= current_timedelta <= end_timedelta:
             return await event.answer(
-                message=create_text_schedule([lesson])
-                .replace("Пара №1:\n", "")
-                .replace("--------------------", ""),
+                message=create_text_schedule_for_one_lesson(lesson),
+                dont_parse_links=True,
+            )
+
+        next_lesson_time = start_timedelta - current_timedelta  # -1 day, 15:53:00
+
+        if next_lesson_time.days == 0 and next_lesson_time.seconds <= 7300:
+            next_lesson_time_list = list(map(int, str(next_lesson_time).split()[-1].split(":")))
+            hour_word = create_word_for_hour(next_lesson_time_list[0])
+            minute_word = create_word_for_minute(next_lesson_time_list[1])
+            next_lesson_text = create_text_schedule_for_one_lesson(lesson)
+            if next_lesson_time_list[0] > 0:
+                message = (f"Сейчас пары нет, но через {next_lesson_time_list[0]}"
+                           f" {hour_word} {next_lesson_time_list[1]} {minute_word} начнется:\n\n{next_lesson_text}")
+            else:
+                message = f"Сейчас пары нет, но через {next_lesson_time_list[1]} {minute_word} начнется:\n\n{next_lesson_text}"
+            return await event.answer(
+                message=message,
                 dont_parse_links=True,
             )
     return "Сейчас пары нет"
