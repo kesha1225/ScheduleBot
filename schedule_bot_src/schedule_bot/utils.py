@@ -17,6 +17,8 @@ def create_word_for_hour(hour: int):
 
 
 def create_word_for_minute(minute: int):
+    if minute == 1:
+        return "минуту"
     return (
         morph.parse("минута")[0].make_agree_with_number(minute).inflect({"gent"}).word
     )
@@ -108,6 +110,31 @@ def get_current_timedelta() -> datetime.timedelta:
     now = get_now()
     current_hour, current_minute = now.strftime("%H:%M").split(":")
     return datetime.timedelta(hours=int(current_hour), minutes=int(current_minute))
+
+
+def get_start_end_datetime(
+    lesson: LESSON, schedule_year: int, schedule_month: int, schedule_day: int
+) -> Tuple[datetime.datetime, datetime.datetime]:
+    start_time, end_time = lesson["time"].split("–")
+    start_hour, start_minute = start_time.split(":")
+    start_datetime = datetime.datetime(
+        year=schedule_year,
+        month=schedule_month,
+        day=schedule_day,
+        hour=int(start_hour),
+        minute=int(start_minute),
+    )
+
+    end_hour, end_minute = end_time.split(":")
+    end_datetime = datetime.datetime(
+        year=schedule_year,
+        month=schedule_month,
+        day=schedule_day,
+        hour=int(end_hour),
+        minute=int(end_minute),
+    )
+
+    return start_datetime, end_datetime
 
 
 def get_start_end_timedelta(

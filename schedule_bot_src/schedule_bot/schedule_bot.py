@@ -24,6 +24,7 @@ from .utils import (
     get_current_timedelta,
     get_start_end_timedelta,
     create_word_for_day,
+    get_start_end_datetime,
 )
 
 load_dotenv()
@@ -67,12 +68,16 @@ def correct_schedule(
 async def get_current_schedule_for_which_and_next() -> Optional[DAY_SCHEDULE]:
     schedule, days = await get_schedule_and_days()
     now = get_now()
+
     current_schedule = correct_schedule(days=days, schedule=schedule, today=now.day)
 
     # типа если сейчас уже все пары прошли то будет сегодняшние показывать без этого ужаса
 
-    if int(current_schedule[-1]["time"].split(":")[0]) < now.hour:
-        # мда
+    if (
+        current_schedule is not None
+        and int(current_schedule[-1]["time"].split(":")[0]) < now.hour
+    ):
+        # хз нужно ли это, в воскр все падает в штуку ниже и сюда не попадает тк в current_schedule None
         if now.isoweekday() + 1 == 6:
             current_schedule = correct_schedule(
                 days=days, schedule=schedule, today=now.day + 3
@@ -133,20 +138,33 @@ def create_next_lesson_message(
     current_schedule: DAY_SCHEDULE,
     current_timedelta: datetime.timedelta,
     current_lesson: Optional[LESSON],
+    all_schedule: WEEK_SCHEDULE,
+    days: DAYS,
 ):
+    schedule_date_str = days[all_schedule.index(current_schedule)].split(".")
+    schedule_day = int(schedule_date_str[0])
+    schedule_month = int(schedule_date_str[1])
+    schedule_year = int(schedule_date_str[2].split("-")[0])
+    now = datetime.datetime.now()
     for lesson in current_schedule:
-        if current_lesson is not None and current_schedule.index(
-            lesson
-        ) <= current_schedule.index(current_lesson):
+        start_datetime, end_datetime = get_start_end_datetime(
+            lesson,
+            schedule_month=schedule_month,
+            schedule_day=schedule_day,
+            schedule_year=schedule_year,
+        )
+        start_timedelta, end_timedelta = get_start_end_timedelta(lesson)
+        if (
+            current_lesson is not None
+            and current_schedule.index(lesson) <= current_schedule.index(current_lesson)
+        ) or (end_timedelta < current_timedelta and schedule_day == now.day):
             continue
-        start_timedelta, _ = get_start_end_timedelta(lesson)
 
-        next_lesson_time = start_timedelta - current_timedelta  # -1 day, 15:53:00
-
-        days_left = re.findall(r"-(\d+) day,", str(next_lesson_time))
+        next_lesson_time = start_datetime - now  # 1 day, 15:53:00
+        days_left = re.findall(r"[-]?(\d+) day[s]?,", str(next_lesson_time))
 
         next_lesson_time_list = list(
-            map(int, str(next_lesson_time).split()[-1].split(":"))
+            map(int, str(next_lesson_time).split()[-1].split(".")[0].split(":"))
         )
         hour_word = create_word_for_hour(next_lesson_time_list[0])
         minute_word = create_word_for_minute(next_lesson_time_list[1])
@@ -154,7 +172,7 @@ def create_next_lesson_message(
 
         day = 0
         if days_left:
-            day = int(days_left[0]) - 1
+            day = int(days_left[0])
 
         if day >= 1:
             day_word = create_word_for_day(day)
@@ -175,6 +193,8 @@ def create_next_lesson_message(
 
 @bot.message_handler(bot.payload_filter({"command": "next"}))
 async def next_lesson(event: bot.SimpleBotEvent):
+    schedule, days = await get_schedule_and_days()
+    now = get_now()
     current_schedule = await get_current_schedule_for_which_and_next()
 
     if current_schedule is None:
@@ -186,6 +206,8 @@ async def next_lesson(event: bot.SimpleBotEvent):
         current_schedule=current_schedule,
         current_timedelta=current_timedelta,
         current_lesson=current_lesson,
+        days=days,
+        all_schedule=schedule,
     )
     if message is not None:
         return await event.answer(
@@ -194,10 +216,7 @@ async def next_lesson(event: bot.SimpleBotEvent):
         )
 
     # сейчас последняя пара, делаем на день вперед
-    schedule, days = await get_schedule_and_days()
-    now = get_now()
     current_schedule = correct_schedule(days=days, schedule=schedule, today=now.day + 1)
-
 
     # TODO: Тут тоже повтор, вынести куда то, а то спать хочу в падлу
     i = 1
@@ -211,6 +230,8 @@ async def next_lesson(event: bot.SimpleBotEvent):
         current_schedule=current_schedule,
         current_timedelta=current_timedelta,
         current_lesson=current_lesson,
+        days=days,
+        all_schedule=schedule,
     )
     return await event.answer(
         message=message,
