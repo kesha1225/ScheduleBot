@@ -145,7 +145,7 @@ def create_next_lesson_message(
     schedule_day = int(schedule_date_str[0])
     schedule_month = int(schedule_date_str[1])
     schedule_year = int(schedule_date_str[2].split("-")[0])
-    now = datetime.datetime.now()
+    now = get_now()
     for lesson in current_schedule:
         start_datetime, end_datetime = get_start_end_datetime(
             lesson,
@@ -160,7 +160,11 @@ def create_next_lesson_message(
         ) or (end_timedelta < current_timedelta and schedule_day == now.day):
             continue
 
-        next_lesson_time = start_datetime - now  # 1 day, 15:53:00
+        # TODO: start_datetime почему то +2:30
+
+        next_lesson_time = start_datetime - now - datetime.timedelta(minutes=30)  # 1 day, 15:53:00
+        print(start_datetime)
+        print(now)
         days_left = re.findall(r"[-]?(\d+) day[s]?,", str(next_lesson_time))
 
         next_lesson_time_list = list(

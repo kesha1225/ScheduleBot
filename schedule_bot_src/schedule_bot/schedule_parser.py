@@ -16,7 +16,7 @@ SCHEDULE_URL = (
 
 
 SCHEDULE_RE = re.compile(
-    r"http://spravka\.nngasu\.ru/schedule/schedule/student\?user_bitrix_id=2437&param=(.+)\" "
+    r"https://spravka\.nngasu\.ru/schedule/schedule/student\?user_bitrix_id=2437&param=(.+)\" "
 )
 
 
@@ -25,17 +25,17 @@ session = aiohttp.ClientSession()
 
 async def get_bitrix_code() -> List[str]:
     async with session.post(
-        "http://nngasu.ru/cdb/schedule/student.php?login=yes",
+        "https://nngasu.ru/cdb/schedule/student.php?login=yes",
         headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:82.0) Gecko/20100101 Firefox/82.0",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:87.0) Gecko/20100101 Firefox/87.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
             "Accept-Language": "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3",
             "Content-Type": "application/x-www-form-urlencoded",
             "Upgrade-Insecure-Requests": "1",
             "Cache-Control": "max-age=0",
-            "referrer": "http://nngasu.ru/cdb/schedule/student.php?login=yes",
+            "referrer": "https://nngasu.ru/cdb/schedule/student.php?login=yes",
         },
-        data="AUTH_FORM=Y&TYPE=AUTH&backurl=%2Fcdb%2Fschedule%2Fstudent.php&USER_LOGIN=gr_IS-29&USER_PASSWORD=916j9w&Login=%C2%EE%E9%F2%E8",
+        data="AUTH_FORM=Y&TYPE=AUTH&backurl=%2Fcdb%2Fschedule%2Fstudent.php&USER_LOGIN=gr_IS-29&USER_PASSWORD=916j9w&Login=%C2%EE%E9%F2%E8"
     ) as resp:
         text = await resp.text()
         return re.findall(SCHEDULE_RE, text)

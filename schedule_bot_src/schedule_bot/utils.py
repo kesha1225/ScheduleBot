@@ -123,6 +123,7 @@ def get_start_end_datetime(
         day=schedule_day,
         hour=int(start_hour),
         minute=int(start_minute),
+        tzinfo=timezone("Europe/Moscow")
     )
 
     end_hour, end_minute = end_time.split(":")
@@ -132,6 +133,7 @@ def get_start_end_datetime(
         day=schedule_day,
         hour=int(end_hour),
         minute=int(end_minute),
+        tzinfo=timezone("Europe/Moscow"),
     )
 
     return start_datetime, end_datetime
@@ -143,7 +145,7 @@ def get_start_end_timedelta(
     start_time, end_time = lesson["time"].split("–")
     start_hour, start_minute = start_time.split(":")
     start_timedelta = datetime.timedelta(
-        hours=int(start_hour), minutes=int(start_minute)
+        hours=int(start_hour), minutes=int(start_minute),
     )
 
     end_hour, end_minute = end_time.split(":")
