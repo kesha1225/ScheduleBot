@@ -255,7 +255,7 @@ async def day_schedule(event: bot.SimpleBotEvent):
     current_schedule = schedule[days.index(day_data)]
     response = create_text_schedule(current_schedule)
 
-    await event.answer(response, dont_parse_links=True)
+    await event.answer(f"Дата - {day_data}\n{response}", dont_parse_links=True)
 
 
 @bot.message_handler(bot.payload_filter({"command": "go"}))

@@ -55,27 +55,28 @@ def create_text_schedule(schedule: DAY_SCHEDULE) -> str:
             continue
         response += (
             f"Пара №{i}:\n{subject['time']}\n{subject['title']}\n"
-            f"{subject['teacher']}"
         )
         old_times.append(subject["time"])
+
         if subject["classroom"]:
             next_subject_time = None
             if schedule.index(subject) + 1 < len(schedule):
                 next_subject_time = schedule[schedule.index(subject) + 1]["time"]
 
             if (
-                group_info == "ИС-29 а\n" or (next_subject_time in old_times)
+                group_info == "ИС-29 а\n" and (next_subject_time in old_times)
             ) and next_subject_time is not None:
                 isb_classroom = schedule[schedule.index(subject) + 1]["classroom"]
+                isb_teacher = schedule[schedule.index(subject) + 1]["teacher"]
                 response += (
-                    f"\nИС-29 а - {subject['classroom']}\nИС-29 б - {isb_classroom}"
+                    f"\nИС-29 а - {subject['classroom']} ({subject['teacher']})\nИС-29 б - {isb_classroom} ({isb_teacher})"
                 )
             elif group_info == "ИС-29 б\n" and previous_group_info != "ИС-29 а":
-                response += f"\nИС-29 б - {subject['classroom']}"
+                response += f"\nИС-29 б - {subject['classroom']} ({subject['teacher']})"
             elif group_info == "ИС-29 а\n" and previous_group_info != "ИС-29 б":
-                response += f"\nИС-29 а - {subject['classroom']}"
+                response += f"\nИС-29 а - {subject['classroom']} ({subject['teacher']})"
             else:
-                response += f"\nИС-29 - {subject['classroom']}"
+                response += f"\nИС-29 - {subject['classroom']} ({subject['teacher']})"
         if subject["link"].strip():
             response += f"\n{group_info} - {subject['link']}"
         if subject["note"]:
