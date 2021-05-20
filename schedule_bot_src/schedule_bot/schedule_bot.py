@@ -269,6 +269,24 @@ async def send_go(event: bot.SimpleBotEvent):
     await event.answer(f"Идти на пары стоит с вероятностью {percent}%")
 
 
+@bot.message_handler(bot.payload_filter({"command": "today"}))
+async def tomorrow(event: bot.SimpleBotEvent):
+    # TODO: повтор, выносить лень
+    now = get_now()
+    if now.isoweekday() in (6, 7):
+        return "ниче нет"
+
+    schedule, days = await get_schedule_and_days()
+
+    for day in days:
+        # TODO: тут повтор, надо вынести куда то
+        if int(day.split(".")[0]) == now.day:
+            current_schedule = schedule[days.index(day)]
+            response = f"Сегодня - {now.strftime('%d.%m.%Y')}\n{create_text_schedule(current_schedule)}"
+
+            await event.answer(response, dont_parse_links=True)
+
+
 @bot.message_handler(bot.payload_filter({"command": "tomorrow"}))
 async def tomorrow(event: bot.SimpleBotEvent):
     now = get_now()

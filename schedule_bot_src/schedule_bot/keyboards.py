@@ -8,6 +8,12 @@ def get_default_kb() -> Keyboard:
     )
     default_kb.add_row()
     default_kb.add_text_button(
+        text="Какаие сегодня пары?",
+        color=ButtonColor.SECONDARY,
+        payload={"command": "today"},
+    )
+    default_kb.add_row()
+    default_kb.add_text_button(
         text="Какая сейчас пара?",
         color=ButtonColor.SECONDARY,
         payload={"command": "which"},
