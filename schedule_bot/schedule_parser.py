@@ -6,7 +6,8 @@ import aiohttp
 from bs4 import BeautifulSoup
 from pytz import timezone
 
-from ._types import WEEK_SCHEDULE, DAYS
+from _types import WEEK_SCHEDULE, DAYS
+from utils import format_day
 
 SCHEDULE_URL = (
     "http://spravka.nngasu.ru/schedule/schedule/student?"
@@ -35,7 +36,7 @@ async def get_bitrix_code() -> List[str]:
             "Cache-Control": "max-age=0",
             "referrer": "https://nngasu.ru/cdb/schedule/student.php?login=yes",
         },
-        data="AUTH_FORM=Y&TYPE=AUTH&backurl=%2Fcdb%2Fschedule%2Fstudent.php&USER_LOGIN=gr_IS-29&USER_PASSWORD=916j9w&Login=%C2%EE%E9%F2%E8"
+        data="AUTH_FORM=Y&TYPE=AUTH&backurl=%2Fcdb%2Fschedule%2Fstudent.php&USER_LOGIN=gr_IS-29&USER_PASSWORD=916j9w&Login=%C2%EE%E9%F2%E8",
     ) as resp:
         text = await resp.text()
         return re.findall(SCHEDULE_RE, text)

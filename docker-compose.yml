@@ -1,0 +1,10 @@
+version: "2"
+
+
+services:
+  schedule_bot_service:
+    build: .
+    restart: always
+
+    volumes:
+      - .:/shedule_bot

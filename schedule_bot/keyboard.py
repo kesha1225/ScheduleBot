@@ -1,4 +1,9 @@
+import datetime
+
 from vkwave.bots import Keyboard, ButtonColor
+
+from _types import DAYS
+from utils import format_day
 
 
 def get_default_kb() -> Keyboard:
@@ -8,7 +13,7 @@ def get_default_kb() -> Keyboard:
     )
     default_kb.add_row()
     default_kb.add_text_button(
-        text="Какаие сегодня пары?",
+        text="Какие сегодня пары?",
         color=ButtonColor.SECONDARY,
         payload={"command": "today"},
     )
@@ -36,3 +41,17 @@ def get_default_kb() -> Keyboard:
         payload={"command": "go"},
     )
     return default_kb
+
+
+async def create_current_kb(days: DAYS) -> Keyboard:
+    kb = Keyboard(inline=True)
+    year = datetime.datetime.now().year
+    for i, day in enumerate(days, start=1):
+        if i % 2 == 0:
+            kb.add_row()
+        kb.add_text_button(
+            text=format_day(day, year),
+            color=ButtonColor.SECONDARY,
+            payload={"day": day},
+        )
+    return kb

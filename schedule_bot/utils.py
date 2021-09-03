@@ -2,12 +2,12 @@ import datetime
 import os
 import json
 import random
-from typing import Tuple
+from typing import Tuple, Callable
 
 from pytz import timezone
 import pymorphy2
 
-from ._types import DAY_SCHEDULE, LESSON
+from _types import DAY_SCHEDULE, LESSON
 
 morph = pymorphy2.MorphAnalyzer()
 
@@ -53,9 +53,7 @@ def create_text_schedule(schedule: DAY_SCHEDULE) -> str:
             or subject["time"] in old_times
         ):
             continue
-        response += (
-            f"Пара №{i}:\n{subject['time']}\n{subject['title']}\n"
-        )
+        response += f"Пара №{i}:\n{subject['time']}\n{subject['title']}\n"
         old_times.append(subject["time"])
 
         if subject["classroom"]:
@@ -68,9 +66,7 @@ def create_text_schedule(schedule: DAY_SCHEDULE) -> str:
             ) and next_subject_time is not None:
                 isb_classroom = schedule[schedule.index(subject) + 1]["classroom"]
                 isb_teacher = schedule[schedule.index(subject) + 1]["teacher"]
-                response += (
-                    f"\nИС-29 а - {subject['classroom']} ({subject['teacher']})\nИС-29 б - {isb_classroom} ({isb_teacher})"
-                )
+                response += f"\nИС-29 а - {subject['classroom']} ({subject['teacher']})\nИС-29 б - {isb_classroom} ({isb_teacher})"
             elif group_info == "ИС-29 б\n" and previous_group_info != "ИС-29 а":
                 response += f"\nИС-29 б - {subject['classroom']} ({subject['teacher']})"
             elif group_info == "ИС-29 а\n" and previous_group_info != "ИС-29 б":
@@ -88,6 +84,9 @@ def create_text_schedule(schedule: DAY_SCHEDULE) -> str:
 
 def create_percent(user_id: int, now: datetime.datetime) -> int:
     random_data_file = os.path.dirname(__file__) + "/random_data.json"
+    if not os.path.exists(random_data_file):
+        with open(random_data_file, "w") as f:
+            f.write(json.dumps({}))
     with open(random_data_file) as f:
         data: dict = json.loads(f.read())
 
@@ -124,7 +123,7 @@ def get_start_end_datetime(
         day=schedule_day,
         hour=int(start_hour),
         minute=int(start_minute),
-        tzinfo=timezone("Europe/Moscow")
+        tzinfo=timezone("Europe/Moscow"),
     )
 
     end_hour, end_minute = end_time.split(":")
@@ -146,10 +145,19 @@ def get_start_end_timedelta(
     start_time, end_time = lesson["time"].split("–")
     start_hour, start_minute = start_time.split(":")
     start_timedelta = datetime.timedelta(
-        hours=int(start_hour), minutes=int(start_minute),
+        hours=int(start_hour),
+        minutes=int(start_minute),
     )
 
     end_hour, end_minute = end_time.split(":")
     end_timedelta = datetime.timedelta(hours=int(end_hour), minutes=int(end_minute))
 
     return start_timedelta, end_timedelta
+
+
+def format_day(raw_time: str, current_year: int):
+    return raw_time.replace(f".{current_year}", "")
+
+
+def is_weekend(now: datetime.datetime):
+    return now.isoweekday() in (6, 7)
